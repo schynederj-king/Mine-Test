@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Mine Test - Final Version</title>
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;font-family:Arial,sans-serif}
+body{overflow:hidden;background:#000;touch-action:none}
+#game-canvas{width:100vw;height:100vh;display:block}
+
+#main-menu{
+ position:absolute;inset:0;z-index:200;display:flex;flex-direction:column;
+ justify-content:center;align-items:center;text-align:center;color:white;
+ background:transparent;pointer-events:none;
+}
+#main-menu > *{pointer-events:auto}
+#main-menu-content{
+ background:radial-gradient(circle,#1b433dcc,#081c15dd);
+ padding:40px 60px;border-radius:6px;border:3px solid #3a5a40;
+ box-shadow:0 20px 50px #000c;display:flex;flex-direction:column;align-items:center;
+}
+#main-menu h1{
+ font-family:VT323,monospace;font-size:84px;font-weight:normal;
+ text-shadow:4px 4px #000;color:#a3b18a;margin-bottom:0
+}
+#main-menu p{margin:5px 0 25px;text-shadow:2px 2px #000;color:#d8f3dc}
+.menu-buttons{display:flex;flex-direction:column;gap:15px}
+.menu-btn{
+ padding:13px 38px;font-size:20px;background:#588157;color:white;
+ border:3px solid #3a5a40;border-radius:3px;font-weight:bold;
+ text-shadow:2px 2px #000;cursor:pointer;min-width:240px;
+}
+.menu-btn:hover{background:#3a5a40}
+#ai-footer{
+ position:absolute;bottom:15px;color:#a3b18ab3;
+ font-family:VT323,monospace;font-size:22px;text-shadow:2px 2px #000;
+ pointer-events:none;letter-spacing:1px;
+}
+
+#ui-layer{position:absolute;inset:0;z-index:10;pointer-events:none;display:none}
+#crosshair{position:absolute;top:50%;left:50%;width:16px;height:16px;transform:translate(-50%,-50%);opacity:.8;mix-blend-mode:difference}
+#crosshair:before,#crosshair:after{content:"";position:absolute;background:white}
+#crosshair:before{top:7px;width:16px;height:2px}
+#crosshair:after{left:7px;width:2px;height:16px}
+
+#gamemode-label{
+ position:absolute;top:15px;right:75px;color:#a3b18a;
+ font-family:VT323,monospace;font-size:28px;text-shadow:2px 2px #000;
+ pointer-events:none;
+}
+
+#health-bar{
+ position:absolute;bottom:65px;left:50%;transform:translateX(-50%);
+ display:flex;gap:2px;pointer-events:none;
+}
+.heart{
+ width:16px;height:16px;background:red;clip-path:polygon(50% 15%, 65% 0%, 100% 30%, 100% 60%, 50% 100%, 0% 60%, 0% 30%, 35% 0%);
+}
+.heart.empty{background:#444;}
+
+#pause-toggle-btn{
+ position:absolute;top:15px;right:15px;width:45px;height:42px;
+ background:#7f7f7f;border:2px solid;border-color:#fff #373737 #373737 #fff;
+ color:white;font-size:20px;font-weight:bold;cursor:pointer;pointer-events:auto;
+ display:flex;align-items:center;justify-content:center;box-shadow:2px 2px 4px #0008;
+}
+#pause-toggle-btn:hover{background:#8b8b8b}
+
+#pause-modal{
+ position:absolute;inset:0;z-index:400;display:none;align-items:center;justify-content:center;
+ background:#0009;color:white;
+}
+.pause-box{
+ width:min(340px,90vw);background:#c6c6c6;border:3px solid;
+ border-color:#fff #555 #555 #fff;padding:20px;text-align:center;
+ box-shadow:0 12px 35px #000;border-radius:3px;color:#222;
+ display:flex;flex-direction:column;align-items:center;gap:15px;
+}
+.pause-title{
+ font-family:VT323,monospace;font-size:36px;color:#222;text-shadow:1px 1px #fff;
+}
+
+#pause-player-preview{
+ width:90px;height:110px;background:linear-gradient(#87ceeb 0 60%,#5b8d42 60%);
+ border:2px solid #555;position:relative;overflow:hidden;margin:0 auto;
+}
+.p-head{position:absolute;width:25px;height:25px;background:#c08a59;left:32px;top:15px;border:1px solid #754b2b}
+.p-hair{position:absolute;width:25px;height:7px;background:#3b2416;left:32px;top:15px}
+.p-body{position:absolute;width:30px;height:38px;background:#008080;left:30px;top:40px;border:1px solid #075858}
+.p-leg1,.p-leg2{position:absolute;width:12px;height:30px;background:#24345c;top:78px}
+.p-leg1{left:30px}.p-leg2{left:48px}
+
+.pause-btn-col{display:flex;flex-direction:column;gap:10px;width:100%}
+.pause-action-btn{
+ padding:11px;font-size:16px;background:#777;color:white;
+ border:2px solid;border-color:#fff #373737 #373737 #fff;
+ font-weight:bold;cursor:pointer;
+}
+.pause-action-btn:hover{background:#888}
+
+#hotbar{
+ position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+ display:flex;background:#202020d9;border:2px solid #111;padding:4px;gap:4px;
+ pointer-events:auto;border-radius:4px;box-shadow:0 4px 12px #0008
+}
+.hotbar-slot,.inv-slot,.craft-slot{
+ width:40px;height:40px;background:#8b8b8b;border:2px solid;
+ border-color:#373737 #fff #fff #373737;position:relative;cursor:pointer;
+ display:flex;align-items:center;justify-content:center
+}
+.hotbar-slot.active,.inv-slot.active{
+ border-color:#fff #373737 #373737 #fff;background:#aaa
+}
+.hotbar-slot canvas,.inv-slot canvas,.craft-slot canvas{width:100%;height:100%;image-rendering:pixelated}
+.count{position:absolute;right:2px;bottom:0;color:white;font-size:12px;font-weight:bold;text-shadow:1px 1px #000}
+.dots{font-size:20px;color:white;background:#555}
+
+#joystick-area{position:absolute;bottom:75px;left:20px;width:90px;height:90px;pointer-events:auto;display:none}
+#joystick-base{width:100%;height:100%;border-radius:50%;background:#0006;border:2px solid #fff6;position:relative}
+#joystick-knob{width:34px;height:34px;border-radius:50%;background:#fffe;position:absolute;top:26px;left:26px;box-shadow:0 2px 5px #0008}
+@media(pointer:coarse){#joystick-area{display:block}}
+
+#inventory-modal{
+ position:absolute;inset:0;z-index:300;display:none;align-items:center;justify-content:center;
+ background:#0009;color:#222
+}
+.inventory{
+ width:min(760px,94vw);background:#c6c6c6;border:3px solid;
+ border-color:#fff #555 #555 #fff;padding:14px;
+ box-shadow:0 12px 35px #000;border-radius:3px
+}
+.inv-title{font-family:VT323,monospace;font-size:28px;margin-bottom:10px;color:#222}
+.inventory-main{display:flex;gap:18px;justify-content:center}
+.player-box{
+ width:190px;min-width:170px;background:#9b9b9b;border:2px solid #555;
+ display:flex;flex-direction:column;align-items:center;padding:10px
+}
+.player-box h3{margin-bottom:5px}
+#player-preview{
+ width:150px;height:190px;background:linear-gradient(#87ceeb 0 60%,#5b8d42 60%);
+ border:2px solid #555;position:relative;overflow:hidden
+}
+.preview-head{position:absolute;width:42px;height:42px;background:#c08a59;left:54px;top:30px;border:2px solid #754b2b}
+.preview-hair{position:absolute;width:42px;height:12px;background:#3b2416;left:54px;top:30px}
+.preview-eye1,.preview-eye2{position:absolute;width:5px;height:5px;background:#222;top:47px}
+.preview-eye1{left:65px}.preview-eye2{left:80px}
+.preview-body{position:absolute;width:50px;height:65px;background:#008080;left:50px;top:72px;border:2px solid #075858}
+.preview-arm1,.preview-arm2{position:absolute;width:16px;height:60px;background:#008080;top:75px}
+.preview-arm1{left:32px}.preview-arm2{left:102px}
+.preview-leg1,.preview-leg2{position:absolute;width:20px;height:48px;background:#24345c;top:135px}
+.preview-leg1{left:51px}.preview-leg2{left:79px}
+
+.inv-right{flex:1;min-width:260px}
+.section-title{font-weight:bold;margin:5px 0}
+.inv-grid{display:grid;grid-template-columns:repeat(9,40px);gap:3px}
+.craft-area{display:flex;align-items:center;gap:12px;margin:10px 0}
+.craft-grid{display:grid;grid-template-columns:repeat(2,40px);gap:3px}
+.craft-arrow{font-size:28px}
+#craft-output{background:#999}
+.close-btn{
+ margin-top:12px;padding:7px 22px;background:#777;color:white;
+ border:2px solid white;font-weight:bold;cursor:pointer
+}
+.inventory-bottom{margin-top:12px}
+.inventory-bottom .inv-grid{grid-template-columns:repeat(9,40px)}
+
+#cursor-item{
+ position:fixed;z-index:600;pointer-events:none;display:none;
+ width:40px;height:40px;transform:translate(-50%, -50%);
+}
+#cursor-item canvas{width:100%;height:100%;image-rendering:pixelated;}
+</style>
+</head>
+
+<body>
+
+<div id="main-menu">
+<div id="main-menu-content">
+<h1>Mine Test</h1>
+<p>Choose Game Mode</p>
+<div class="menu-buttons">
+<button class="menu-btn" onclick="startGame('creative')">Creative Mode (Flight)</button>
+<button class="menu-btn" onclick="startGame('singleplayer')">Singleplayer (Survival)</button>
+</div>
+</div>
+<div id="ai-footer">Made with AI</div>
+</div>
+
+<div id="pause-modal">
+<div class="pause-box">
+<div class="pause-title">Game Paused</div>
+<div id="pause-player-preview">
+<div class="p-hair"></div>
+<div class="p-head"></div>
+<div class="p-body"></div>
+<div class="p-leg1"></div>
+<div class="p-leg2"></div>
+</div>
+<div class="pause-btn-col">
+<button class="pause-action-btn" onclick="goToLobby()">Back to Lobby</button>
+<button class="pause-action-btn" onclick="resumeGame()">Go Back</button>
+</div>
+</div>
+</div>
+
+<div id="inventory-modal">
+<div class="inventory">
+<div class="inv-title" id="modal-inv-title">Inventory</div>
+<div class="inventory-main">
+<div class="player-box">
+<h3>Player</h3>
+<div id="player-preview">
+<div class="preview-hair"></div>
+<div class="preview-head"></div>
+<div class="preview-eye1"></div>
+<div class="preview-eye2"></div>
+<div class="preview-body"></div>
+<div class="preview-arm1"></div>
+<div class="preview-arm2"></div>
+<div class="preview-leg1"></div>
+<div class="preview-leg2"></div>
+</div>
+</div>
+<div class="inv-right">
+<div class="section-title">Crafting</div>
+<div class="craft-area">
+<div class="craft-grid">
+<div class="craft-slot" id="craft-0"></div>
+<div class="craft-slot" id="craft-1"></div>
+<div class="craft-slot" id="craft-2"></div>
+<div class="craft-slot" id="craft-3"></div>
+</div>
+<div class="craft-arrow">➜</div>
+<div class="craft-slot" id="craft-output"></div>
+</div>
+<div class="section-title">Inventory</div>
+<div class="inv-grid" id="inventory-grid"></div>
+</div>
+</div>
+<div class="inventory-bottom">
+<div class="section-title">Hotbar</div>
+<div class="inv-grid" id="inventory-hotbar"></div>
+</div>
+<button class="close-btn" onclick="closeInventory()">Close</button>
+</div>
+</div>
+
+<canvas id="game-canvas"></canvas>
+
+<div id="ui-layer">
+<div id="crosshair"></div>
+<div id="gamemode-label">CREATIVE</div>
+<div id="health-bar"></div>
+<button id="pause-toggle-btn" onclick="togglePause()">II</button>
+<div id="hotbar"></div>
+<div id="joystick-area">
+<div id="joystick-base"><div id="joystick-knob"></div></div>
+</div>
+</div>
+
+<div id="cursor-item"></div>
+
+<script>
+let inMenu = true;
+let gameMode = 'creative';
+let isPaused = false;
+let playerHealth = 20;
+
+const ALL_BLOCK_TYPES = ["Grass", "Wood", "Plank", "Leaves", "Stone", "Dirt", "Glass", "Sand", "Bricks", "Bookshelf"];
+
+function createTexture(type){
+ const c=document.createElement("canvas");c.width=c.height=16;
+ const g=c.getContext("2d");
+ if(type==="grass_top"){g.fillStyle="#40916c";g.fillRect(0,0,16,16);g.fillStyle="#52b788";g.fillRect(2,2,4,4);g.fillRect(10,8,3,3)}
+ else if(type==="grass_side"){g.fillStyle="#7f5539";g.fillRect(0,0,16,16);g.fillStyle="#40916c";g.fillRect(0,0,16,4)}
+ else if(type==="wood_side"){g.fillStyle="#5c3a21";g.fillRect(0,0,16,16);g.fillStyle="#3e2413";g.fillRect(2,0,2,16);g.fillRect(8,0,2,16)}
+ else if(type==="wood_top"){g.fillStyle="#d4a373";g.fillRect(0,0,16,16);g.strokeStyle="#a67c52";g.lineWidth=2;g.strokeRect(3,3,10,10)}
+ else if(type==="plank"){g.fillStyle="#b07d48";g.fillRect(0,0,16,16);g.fillStyle="#8c5e31";g.fillRect(0,7,16,2);g.fillRect(0,15,16,1)}
+ else if(type==="leaves"){g.fillStyle="#1b4332";g.fillRect(0,0,16,16);g.fillStyle="#2d6a4f";g.fillRect(2,2,4,4);g.fillRect(9,7,5,5)}
+ else if(type==="stone"){g.fillStyle="#808080";g.fillRect(0,0,16,16);g.fillStyle="#606060";g.fillRect(2,3,3,2);g.fillRect(10,11,4,3)}
+ else if(type==="dirt"){g.fillStyle="#86592d";g.fillRect(0,0,16,16);g.fillStyle="#6e4722";g.fillRect(1,5,3,3);g.fillRect(9,10,4,2)}
+ else if(type==="glass"){g.fillStyle="#dbeafe66";g.fillRect(0,0,16,16);g.strokeStyle="#fff";g.strokeRect(0,0,16,16);g.fillStyle="#fff";g.fillRect(2,2,2,2)}
+ else if(type==="sand"){g.fillStyle="#e3d081";g.fillRect(0,0,16,16);g.fillStyle="#c2b062";g.fillRect(4,2,2,2);g.fillRect(11,12,3,2)}
+ else if(type==="bricks"){g.fillStyle="#993d3d";g.fillRect(0,0,16,16);g.fillStyle="#d1d1d1";g.fillRect(0,7,16,1);g.fillRect(7,0,1,7);g.fillRect(3,8,1,8)}
+ else if(type==="bookshelf"){g.fillStyle="#b07d48";g.fillRect(0,0,16,16);g.fillStyle="#451a03";g.fillRect(1,1,4,14);g.fillRect(6,1,5,14);g.fillRect(12,1,3,14)}
+ else if(type==="steve_sleeve"){g.fillStyle="#008080";g.fillRect(0,0,16,16)}
+ else if(type==="steve_skin"){g.fillStyle="#c08a59";g.fillRect(0,0,16,16)}
+ else if(type==="barrier"){g.fillStyle="#0096ff26";g.fillRect(0,0,16,16)}
+ return c
+}
+
+const textureCache={};
+function getThreeTexture(type){
+ if(!textureCache[type]){
+  const t=new THREE.CanvasTexture(createTexture(type));
+  t.magFilter=THREE.NearestFilter;
+  textureCache[type]=t
+ }
+ return textureCache[type]
+}
+
+const scene=new THREE.Scene();
+const dayColor=new THREE.Color(0x87ceeb),nightColor=new THREE.Color(0x050512);
+scene.background=dayColor.clone();
+scene.fog=new THREE.FogExp2(dayColor,.015);
+
+const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,150);
+const renderer=new THREE.WebGLRenderer({
+ canvas:document.getElementById("game-canvas"),
+ antialias:false,powerPreference:"high-performance"
+});
+renderer.setSize(innerWidth,innerHeight);
+camera.position.set(0, 5, 12);
+camera.rotation.x = -0.2;
+
+const ambient=new THREE.AmbientLight(0xffffff,.7);
+const sun=new THREE.DirectionalLight(0xffeedd,.8);
+sun.position.set(20,40,20);
+scene.add(ambient,sun);
+
+function getMaterial(type){
+ if(type==="Grass") return [
+  new THREE.MeshLambertMaterial({map:getThreeTexture("grass_side")}),
+  new THREE.MeshLambertMaterial({map:getThreeTexture("grass_side")}),
+  new THREE.MeshLambertMaterial({map:getThreeTexture("grass_top")}),
+  new THREE.MeshLambertMaterial({map:getThreeTexture("dirt")}),
+  new THREE.MeshLambertMaterial({map:getThreeTexture("grass_side")}),
+  new THREE.MeshLambertMaterial({map:getThreeTexture("grass_side")})
+ ];
+ if(type==="Wood") return [
+  new THREE.MeshLambertMaterial({map:getThreeTexture("wood_side")}),
+  new THREE.MeshLambertMaterial({map:getThreeTexture("wood_side")}),
+  new THREE.MeshLambertMaterial({map:getThreeTexture("wood_top")}),
+  new THREE.MeshLambertMaterial({map:getThreeTexture("wood_top")}),
+  new THREE.MeshLambertMaterial({map:getThreeTexture("wood_side")}),
+  new THREE.MeshLambertMaterial({map:getThreeTexture("wood_side")})
+ ];
+ if(type==="Plank") return new THREE.MeshLambertMaterial({map:getThreeTexture("plank")});
+ if(type==="Leaves") return new THREE.MeshLambertMaterial({map:getThreeTexture("leaves")});
+ if(type==="Stone") return new THREE.MeshLambertMaterial({map:getThreeTexture("stone")});
+ if(type==="Dirt") return new THREE.MeshLambertMaterial({map:getThreeTexture("dirt")});
+ if(type==="Glass") return new THREE.MeshLambertMaterial({map:getThreeTexture("glass"), transparent:true});
+ if(type==="Sand") return new THREE.MeshLambertMaterial({map:getThreeTexture("sand")});
+ if(type==="Bricks") return new THREE.MeshLambertMaterial({map:getThreeTexture("bricks")});
+ if(type==="Bookshelf") return [
+  new THREE.MeshLambertMaterial({map:getThreeTexture("plank")}),
+  new THREE.MeshLambertMaterial({map:getThreeTexture("plank")}),
+  new THREE.MeshLambertMaterial({map:getThreeTexture("plank")}),
+  new THREE.MeshLambertMaterial({map:getThreeTexture("plank")}),
+  new THREE.MeshLambertMaterial({map:getThreeTexture("bookshelf")}),
+  new THREE.MeshLambertMaterial({map:getThreeTexture("bookshelf")})
+ ];
+ return new THREE.MeshLambertMaterial({color:0xffffff});
+}
+
+const matBarrier=new THREE.MeshBasicMaterial({map:getThreeTexture("barrier"),transparent:true,side:THREE.DoubleSide});
+const blocks=[], menuBlocks=[];
+
+function addBlock(x,y,z,type,isMenu=false){
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),getMaterial(type));
+ mesh.position.set(x,y,z);
+ mesh.userData={type,isSolid:true};
+ scene.add(mesh);
+ if(isMenu) menuBlocks.push(mesh);
+ else blocks.push(mesh);
+ return mesh
+}
+
+// Build custom scenic background island for the Main Menu
+function buildMenuBackground(){
+ for(let x=-6;x<=6;x++){
+  for(let z=-6;z<=6;z++){
+   if(Math.hypot(x,z) < 6.5){
+    addBlock(x, 0, z, "Grass", true);
+    addBlock(x, -1, z, "Dirt", true);
+    addBlock(x, -2, z, "Stone", true);
+   }
+  }
+ }
+ for(let y=1;y<=3;y++) addBlock(2, y, -2, "Wood", true);
+ for(let lx=-1;lx<=1;lx++) for(let lz=-1;lz<=1;lz++) for(let ly=4;ly<=5;ly++){
+  addBlock(2+lx, ly, -2+lz, "Leaves", true);
+ }
+ addBlock(-3, 1, -2, "Bricks", true);
+ addBlock(-3, 2, -2, "Bookshelf", true);
+ addBlock(-2, 1, 3, "Sand", true);
+ addBlock(-2, 1, 2, "Glass", true);
+}
+
+buildMenuBackground();
+
+const arm=new THREE.Group();
+const sleeve=new THREE.Mesh(new THREE.BoxGeometry(.2,.35,.2),new THREE.MeshLambertMaterial({map:getThreeTexture("steve_sleeve")}));
+const hand=new THREE.Mesh(new THREE.BoxGeometry(.18,.3,.18),new THREE.MeshLambertMaterial({map:getThreeTexture("steve_skin")}));
+sleeve.position.set(0,.1,.05);hand.position.set(0,-.15,-.08);
+arm.add(sleeve,hand);arm.position.set(.38,-.32,-.45);arm.rotation.set(.4,-.3,-.1);
+camera.add(arm);scene.add(camera);
+
+let swinging=false,swingTimer=0;
+function animateArm(){
+ if(swinging){
+  swingTimer+=.35;
+  arm.rotation.x=.4-Math.sin(swingTimer)*.9;
+  if(swingTimer>=Math.PI){swinging=false;swingTimer=0;arm.rotation.set(.4,-.3,-.1)}
+ }
+}
+
+let pitch=0,yaw=0;
+const keys={w:false,a:false,s:false,d:false,space:false,shift:false};
+
+addEventListener("keydown",e=>{
+ if(isPaused||inMenu)return;
+ const k=e.key.toLowerCase();
+ if(keys.hasOwnProperty(k))keys[k]=true;
+ if(e.code==="Space") keys.space=true;
+ if(e.code==="ShiftLeft" || e.code==="ShiftRight") keys.shift=true;
+ 
+ if(k==="e"){
+  if(document.getElementById("inventory-modal").style.display==="flex")closeInventory();
+  else openInventory()
+ }
+});
+addEventListener("keyup",e=>{
+ const k=e.key.toLowerCase();
+ if(keys.hasOwnProperty(k))keys[k]=false;
+ if(e.code==="Space") keys.space=false;
+ if(e.code==="ShiftLeft" || e.code==="ShiftRight") keys.shift=false;
+});
+
+const joyArea=document.getElementById("joystick-area"),joyKnob=document.getElementById("joystick-knob");
+let joyActive=false,joyX=0,joyY=0,joyDist=0,joyId=null;
+
+function updateJoy(t){
+ if(isPaused||inMenu)return;
+ const r=joyArea.getBoundingClientRect();
+ let dx=t.clientX-(r.left+r.width/2),dy=t.clientY-(r.top+r.height/2);
+ const max=(r.width/2)-17,d=Math.hypot(dx,dy);
+ joyDist=Math.min(d/max,1);
+ if(d>max){dx=dx/d*max;dy=dy/d*max}
+ joyX=dx/max;joyY=dy/max;
+ joyKnob.style.transform=`translate(${dx}px,${dy}px)`
+}
+joyArea.addEventListener("touchstart",e=>{
+ if(isPaused||inMenu)return;
+ e.preventDefault();const t=e.changedTouches[0];
+ joyId=t.identifier;joyActive=true;updateJoy(t)
+},{passive:false});
+joyArea.addEventListener("touchmove",e=>{
+ if(isPaused||inMenu)return;
+ e.preventDefault();
+ for(const t of e.changedTouches)if(t.identifier===joyId)updateJoy(t)
+},{passive:false});
+joyArea.addEventListener("touchend",e=>{
+ for(const t of e.changedTouches)if(t.identifier===joyId){
+  joyActive=false;joyX=joyY=joyDist=0;joyKnob.style.transform="translate(0,0)"
+ }
+},{passive:false});
+
+let lookId=null,lastX,lastY,startX,startY,isTap=false;
+addEventListener("touchstart",e=>{
+ if(inMenu||isPaused||e.target.closest("#joystick-area")||e.target.closest("#hotbar")||e.target.closest("#inventory-modal")||e.target.closest("#pause-toggle-btn"))return;
+ const t=e.changedTouches[0];
+ lookId=t.identifier;lastX=startX=t.clientX;lastY=startY=t.clientY;isTap=true
+},{passive:false});
+
+addEventListener("touchmove",e=>{
+ if(inMenu||isPaused)return;
+ for(const t of e.changedTouches)if(t.identifier===lookId){
+  const dx=t.clientX-lastX,dy=t.clientY-lastY;
+  if(Math.hypot(t.clientX-startX,t.clientY-startY)>8)isTap=false;
+  yaw-=dx*.008;pitch-=dy*.008;
+  pitch=Math.max(-Math.PI*.48,Math.min(Math.PI*.48,pitch));
+  lastX=t.clientX;lastY=t.clientY
+ }
+},{passive:false});
+
+addEventListener("touchend",e=>{
+ if(inMenu||isPaused)return;
+ for(const t of e.changedTouches)if(t.identifier===lookId){
+  if(isTap&&document.getElementById("inventory-modal").style.display!=="flex")doHit(0);
+  lookId=null
+ }
+},{passive:false});
+
+document.getElementById("game-canvas").addEventListener("click",()=>{
+ if(!inMenu&&!isPaused&&document.getElementById("inventory-modal").style.display!=="flex")document.body.requestPointerLock()
+});
+document.addEventListener("mousemove",e=>{
+ if(!inMenu&&!isPaused&&document.pointerLockElement===document.body){
+  yaw-=e.movementX*.004;pitch-=e.movementY*.004;
+  pitch=Math.max(-Math.PI*.48,Math.min(Math.PI*.48,pitch))
+ }
+});
+
+window.addEventListener("contextmenu", e => e.preventDefault());
+
+addEventListener("mousedown",e=>{
+ if(!inMenu&&!isPaused&&document.pointerLockElement===document.body){
+  if(e.button===0) doHit(0);
+  if(e.button===2) doHit(1);
+ }
+});
+
+const raycaster=new THREE.Raycaster();
+
+function doHit(actionType){
+ if(isPaused||inMenu)return;
+ swinging=true;swingTimer=0;
+ raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
+ const hits=raycaster.intersectObjects(blocks);
+ 
+ if(hits.length && hits[0].distance < 5){
+  const hit = hits[0];
+  if(actionType === 0){
+   const b = hit.object;
+   if(b.userData.type!=="Grass" || gameMode==="singleplayer"){
+    scene.remove(b);
+    blocks.splice(blocks.indexOf(b),1);
+    if(gameMode==="singleplayer") addItem(b.userData.type,1);
+   }
+  } else if(actionType === 1){
+   const selectedItem = hotbar[activeSlot];
+   if(!selectedItem || selectedItem.count <= 0) return;
+
+   const normal = hit.face.normal.clone();
+   normal.transformDirection(hit.object.matrixWorld);
+   const targetPos = hit.object.position.clone().add(normal);
+
+   const playerBox = new THREE.Box3(
+    new THREE.Vector3(camera.position.x - 0.3, camera.position.y - 1.5, camera.position.z - 0.3),
+    new THREE.Vector3(camera.position.x + 0.3, camera.position.y + 0.2, camera.position.z + 0.3)
+   );
+   const newBlockBox = new THREE.Box3(
+    new THREE.Vector3(targetPos.x - 0.5, targetPos.y - 0.5, targetPos.z - 0.5),
+    new THREE.Vector3(targetPos.x + 0.5, targetPos.y + 0.5, targetPos.z + 0.5)
+   );
+
+   if(!playerBox.intersectsBox(newBlockBox)){
+    addBlock(targetPos.x, targetPos.y, targetPos.z, selectedItem.type, false);
+    if(gameMode === 'singleplayer'){
+     selectedItem.count--;
+     if(selectedItem.count <= 0) hotbar[activeSlot] = null;
+     renderAll();
+    }
+   }
+  }
+ }
+}
+
+const hotbar=Array(8).fill(null);
+const inventory=Array(27).fill(null);
+const craft=Array(4).fill(null);
+let activeSlot=0,heldItem=null;
+
+const cursorItemEl=document.getElementById("cursor-item");
+addEventListener("mousemove", e => {
+ cursorItemEl.style.left=e.clientX+"px";
+ cursorItemEl.style.top=e.clientY+"px";
+});
+
+function addItem(type,count=1){
+ let arr=[...hotbar,...inventory];
+ let existing=arr.find(s=>s&&s.type===type);
+ if(existing && gameMode==="creative"){
+  existing.count=99;
+ } else if(existing){
+  existing.count+=count;
+ } else {
+  let i=hotbar.findIndex(s=>!s);
+  if(i>=0)hotbar[i]={type,count:gameMode==="creative"?99:count};
+  else{
+   i=inventory.findIndex(s=>!s);
+   if(i>=0)inventory[i]={type,count:gameMode==="creative"?99:count};
+  }
+ }
+ renderAll();
+}
+
+function texName(type){
+ return type==="Wood"?"wood_side":type==="Plank"?"plank":type==="Stone"?"stone":type==="Dirt"?"dirt":type==="Glass"?"glass":type==="Sand"?"sand":type==="Bricks"?"bricks":type==="Bookshelf"?"bookshelf":type==="Leaves"?"leaves":"grass_top"
+}
+
+function makeIcon(type){
+ const c=createTexture(texName(type));
+ c.style.width="100%";c.style.height="100%";c.style.imageRendering="pixelated";
+ return c
+}
+
+function drawSlot(el,item){
+ el.innerHTML="";
+ if(item){
+  el.appendChild(makeIcon(item.type));
+  const n=document.createElement("span");
+  n.className="count";n.textContent=gameMode==="creative"?"∞":item.count;
+  el.appendChild(n)
+ }
+}
+
+function slotClick(arr,index){
+ const item=arr[index];
+ if(!heldItem&&item){
+  heldItem={...item};arr[index]=null
+ }else if(heldItem&&!item){
+  arr[index]=heldItem;heldItem=null
+ }else if(heldItem&&item){
+  if(item.type===heldItem.type&&gameMode==="creative"){
+   item.count=99;heldItem=null
+  }else{
+   const old=arr[index];arr[index]=heldItem;heldItem=old
+  }
+ }
+ renderAll()
+}
+
+function renderHotbar(){
+ const hb=document.getElementById("hotbar");hb.innerHTML="";
+ for(let i=0;i<8;i++){
+  const d=document.createElement("div");
+  d.className="hotbar-slot "+(i===activeSlot?"active":"");
+  d.onclick=()=>{activeSlot=i;renderHotbar()};
+  drawSlot(d,hotbar[i]);hb.appendChild(d)
+ }
+ const d=document.createElement("div");
+ d.className="hotbar-slot dots";d.textContent="...";
+ d.onclick=openInventory;hb.appendChild(d)
+}
+
+function renderInventory(){
+ const grid=document.getElementById("inventory-grid");
+ grid.innerHTML="";
+ inventory.forEach((item,i)=>{
+  const d=document.createElement("div");
+  d.className="inv-slot";
+  d.onclick=()=>slotClick(inventory,i);
+  drawSlot(d,item);grid.appendChild(d)
+ });
+ const hb=document.getElementById("inventory-hotbar");
+ hb.innerHTML="";
+ hotbar.forEach((item,i)=>{
+  const d=document.createElement("div");
+  d.className="inv-slot "+(i===activeSlot?"active":"");
+  d.onclick=()=>slotClick(hotbar,i);
+  drawSlot(d,item);hb.appendChild(d)
+ })
+}
+
+function renderCraft(){
+ for(let i=0;i<4;i++){
+  const d=document.getElementById("craft-"+i);
+  drawSlot(d,craft[i]);
+  d.onclick=()=>slotClick(craft,i)
+ }
+ const out=document.getElementById("craft-output");
+ let items=craft.filter(Boolean);
+ let result=null;
+ if(items.length===1&&items[0].type==="Wood")result={type:"Plank",count:4};
+ drawSlot(out,result);
+ out.onclick=()=>{
+  if(!result)return;
+  addItem(result.type,result.count);
+  for(let i=0;i<4;i++)craft[i]=null;
+  renderCraft()
+ }
+}
+
+function renderCursor(){
+ if(heldItem){
+  cursorItemEl.style.display="block";
+  drawSlot(cursorItemEl, heldItem);
+ }else{
+  cursorItemEl.style.display="none";
+ }
+}
+
+function renderHealth(){
+ const hb = document.getElementById("health-bar");
+ hb.innerHTML = "";
+ if(gameMode === 'singleplayer'){
+  hb.style.display = "flex";
+  let fullHearts = Math.floor(playerHealth / 2);
+  for(let i=0; i<10; i++){
+   const h = document.createElement("div");
+   h.className = "heart" + (i < fullHearts ? "" : " empty");
+   hb.appendChild(h);
+  }
+ } else {
+  hb.style.display = "none";
+ }
+}
+
+function renderAll(){
+ renderHotbar();
+ renderInventory();
+ renderCraft();
+ renderCursor();
+ renderHealth();
+}
+
+function openInventory(){
+ document.exitPointerLock();
+ document.getElementById("inventory-modal").style.display="flex";
+ renderAll()
+}
+
+function closeInventory(){
+ document.getElementById("inventory-modal").style.display="none";
+ if(heldItem){addItem(heldItem.type,heldItem.count);heldItem=null;}
+ renderCursor();
+}
+
+function togglePause(){
+ isPaused = !isPaused;
+ if(isPaused){
+  document.exitPointerLock();
+  document.getElementById("pause-modal").style.display="flex";
+  document.getElementById("ui-layer").style.display="none";
+ } else {
+  document.getElementById("pause-modal").style.display="none";
+  document.getElementById("ui-layer").style.display="block";
+ }
+}
+
+function resumeGame(){
+ isPaused = false;
+ document.getElementById("pause-modal").style.display="none";
+ document.getElementById("ui-layer").style.display="block";
+}
+
+function goToLobby(){
+ inMenu = true;
+ isPaused = false;
+ document.exitPointerLock();
+ document.getElementById("pause-modal").style.display="none";
+ document.getElementById("ui-layer").style.display="none";
+ document.getElementById("inventory-modal").style.display="none";
+ document.getElementById("main-menu").style.display="flex";
+ 
+ // Clear regular game blocks & load menu scene back
+ blocks.forEach(b => scene.remove(b));
+ blocks.length = 0;
+ menuBlocks.forEach(b => scene.add(b));
+ camera.position.set(0, 5, 12);
+ camera.rotation.set(-0.2, 0, 0);
+}
+
+renderAll();
+
+const clock=new THREE.Clock();
+let menuAngle=0;
+
+function animate(){
+ requestAnimationFrame(animate);
+ const delta=clock.getDelta();
+
+ if(inMenu){
+  menuAngle += delta * 0.3;
+  camera.position.x = Math.sin(menuAngle) * 12;
+  camera.position.z = Math.cos(menuAngle) * 12;
+  camera.position.y = 4 + Math.sin(menuAngle * 2) * 0.5;
+  camera.lookAt(0, 0, 0);
+ } else if(!isPaused && document.getElementById("inventory-modal").style.display!=="flex"){
+  let fwd=0,right=0,up=0;
+  if(keys.w)fwd++;
+  if(keys.s)fwd--;
+  if(keys.a)right--;
+  if(keys.d)right++;
+  if(keys.space)up++;
+  if(keys.shift)up--;
+  if(joyActive){fwd-=joyY;right+=joyX}
+
+  const speed=6.0*delta;
+  const f=new THREE.Vector3(0,0,-1).applyAxisAngle(new THREE.Vector3(0,1,0),yaw);
+  const r=new THREE.Vector3(1,0,0).applyAxisAngle(new THREE.Vector3(0,1,0),yaw);
+  
+  camera.position.addScaledVector(f, fwd * speed);
+  camera.position.addScaledVector(r, right * speed);
+  
+  if(gameMode === 'creative'){
+   if(keys.space) camera.position.y += speed * 1.5;
+   if(keys.shift) camera.position.y -= speed * 1.5;
+   if(camera.position.y < 1.5) camera.position.y = 1.5;
+  } else {
+   camera.position.y -= 9.8 * delta;
+   if(camera.position.y < 1.5){
+    let fallDist = 1.5 - camera.position.y;
+    if(fallDist > 1.5){
+     playerHealth = Math.max(0, playerHealth - 2);
+     renderHealth();
+    }
+    camera.position.y = 1.5;
+   }
+   if(keys.space && camera.position.y <= 1.5){
+    camera.position.y += 4.5 * delta;
+   }
+  }
+
+  camera.rotation.set(pitch,yaw,0,"YXZ");
+  animateArm();
+ }
+
+ renderer.render(scene,camera)
+}
+
+function startGame(mode){
+ inMenu = false;
+ gameMode = mode;
+ isPaused = false;
+ playerHealth = 20;
+ 
+ menuBlocks.forEach(b => scene.remove(b));
+ menuBlocks.length = 0;
+
+ const MAP_SIZE = 30;
+ for(let x=-MAP_SIZE;x<=MAP_SIZE;x++){
+  for(let z=-MAP_SIZE;z<=MAP_SIZE;z++){
+   addBlock(x,0,z,"Grass", false);
+   if(Math.random()<.02&&Math.abs(x)>4&&Math.abs(z)>4){
+    const h=4+Math.floor(Math.random()*2);
+    for(let y=1;y<=h;y++)addBlock(x,y,z,"Wood", false);
+    for(let lx=-2;lx<=2;lx++)for(let lz=-2;lz<=2;lz++)for(let ly=h-1;ly<=h+1;ly++){
+     if(Math.abs(lx)===2&&Math.abs(lz)===2)continue;
+     if(lx===0&&lz===0&&ly<=h)continue;
+     addBlock(x+lx,ly,z+lz,"Leaves", false)
+    }
+   }
+  }
+ }
+ for(let i=-MAP_SIZE-.5;i<=MAP_SIZE+.5;i++){
+  for(let y=1;y<=4;y++){
+   for(const [xx,zz] of [[i,-MAP_SIZE-.5],[i,MAP_SIZE+.5],[-MAP_SIZE-.5,i],[MAP_SIZE+.5,i]]){
+    const b=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),matBarrier);
+    b.position.set(xx,y,zz);scene.add(b); blocks.push(b);
+   }
+  }
+ }
+
+ camera.position.set(0, 2.5, 0);
+ camera.rotation.set(0, 0, 0);
+
+ document.getElementById("main-menu").style.display="none";
+ document.getElementById("ui-layer").style.display="block";
+ document.getElementById("gamemode-label").textContent = mode === 'creative' ? 'CREATIVE' : 'SURVIVAL';
+ document.getElementById("modal-inv-title").textContent = mode === 'creative' ? 'Creative Inventory' : 'Survival Inventory';
+
+ hotbar.fill(null);
+ inventory.fill(null);
+
+ if(mode === 'creative'){
+  ALL_BLOCK_TYPES.forEach(type => addItem(type, 99));
+ } else {
+  renderAll();
+ }
+}
+
+addEventListener("resize",()=>{
+ camera.aspect=innerWidth/innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(innerWidth,innerHeight)
+});
+
+animate();
+</script>
+</body>
+</html>
+
